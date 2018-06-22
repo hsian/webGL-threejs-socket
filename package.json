@@ -1,0 +1,26 @@
+{
+  "name": "match",
+  "version": "0.0.1",
+  "description": "canvas 3D about threejs webGL, socket match system",
+  "main": "app.js",
+  "scripts": {
+    "start": "nodemon app.js"
+  },
+  "author": "hsian",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.16.2",
+    "http": "^0.0.0",
+    "nodemon": "^1.17.1",
+    "socket.io": "^2.0.4"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hsian/webGL-threejs-socket.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hsian/webGL-threejs-socket/issues"
+  },
+  "homepage": "https://github.com/hsian/webGL-threejs-socket#readme"
+}

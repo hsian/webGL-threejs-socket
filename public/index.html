@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset=utf-8>
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+		<title>cat</title>
+		<style>	
+			html, body{
+				width:100%;
+				height:100%;
+				overflow: hidden;
+				position: relative;
+			}
+			body { margin: 0; }
+			canvas { width: 100%; height: 100%; background: #fff; }
+			#countDown{
+				position:absolute;
+				top:10px;
+				left:48%;
+				color:#fff;
+			}
+
+			#startCoutDown{
+				position: absolute;
+				top:0;
+				bottom:0;
+				left:0;
+				right:0;
+				overflow: hidden;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 150px;
+				color:#fff;
+				transform: scale(4,4);
+				opacity: 0;
+				background: rgba(0,0,0,0.3);
+			}
+
+			#startCoutDown.changeCountDown{
+				transition:all 0.6s ease;
+				transform: scale(1);
+				opacity: 1;
+			}
+
+			#gameover{
+				width:100%;
+				position: absolute;
+				top:45%;
+				left:0;
+				text-align: center;
+				color:#fff;
+				font-size: 50px;
+				display: none;
+			}
+
+			#restart{
+				width:50%;
+				height:50px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="countDown"></div>
+		<div id="container"></div>
+		<!-- <div id="startCoutDown">3</div>
+		<div id="gameover">
+			<div>game over</div>
+			<button id="restart">重新开始</button>
+		</div> -->
+		<script src="/socket.io/socket.io.js"></script>
+		<script src="./js/libs/three.js"></script>
+		<script src="./js/libs/stat.js"></script>
+		<script src="./js/libs/UnpackDepthRGBAShader.js"></script>
+		<script src="./js/libs/ShadowMapViewer.js"></script>
+
+		<script src="./js/stage.js"></script>
+		<script src="./js/character.js"></script>
+		<script src="./js/fishbone.js"></script>
+		<script src="./js/main.js"></script>
+		<script>
+		/*var startCoutDown = document.getElementById("startCoutDown");	
+		var countDown = document.getElementById("countDown");
+		var gameover = document.getElementById('gameover');
+
+    	function countDown(min, fn){ // minute
+    		var second = min * 60;
+    		var timer = null;
+    		var m,s;
+
+    		countDown.style.display = "block";
+
+    		(function reduce(){
+    			timer = setTimeout(function(){
+    				if(second == 0){
+    					fn();
+    					clearTimeout(timer);
+    					return;
+    				}
+
+    				second--;
+    				m = Math.floor(second / 60);
+    				s = second % 60;
+    				reduce()
+    			},1000);
+
+    			// setTimout第一次还未执行
+    			if(typeof m !== 'undefined' && typeof s !== 'undefined'){
+    				var str = ("0" + m).slice(-2) + ":" + ("0" + s).slice(-2);
+    				countDown.innerHTML = str;
+    			}		
+    		}());
+    	}
+		
+		function startCountDown(fn){
+			var num = 3;
+			var interval = 0;
+			var timer = null;
+
+			startCoutDown.style.display = "flex";
+
+			(function _animate(){
+				timer = setTimeout(function(){
+
+					interval = 1000;
+
+					if(num == 0){
+						startCoutDown.innerHTML = "GO";
+						clearTimeout(timer);
+					}else{
+						startCoutDown.innerHTML = num;
+					}
+					
+					startCoutDown.classList.add("changeCountDown");
+					
+					setTimeout(function(){
+						startCoutDown.classList.remove("changeCountDown");
+						if(num == -1){
+							startCoutDown.style.cssText = "display:none"
+							//threeEnd = true;
+							fn();
+						}
+					},600);
+					
+					num--;
+					if(num == -1) return;
+					_animate();
+				},interval)
+
+			}());	
+		}
+
+		function gameOverShow(isShow){
+			if(isShow){
+				gameover.style.display = "block";
+			}else{
+				gameover.style.display = "none";
+			}
+		}
+
+		function main(){
+			container = document.getElementById("container");
+			stats = new Stats();
+			container.appendChild( stats.dom );
+
+			var stage = new Stage(container);
+			var character = new Character(stage);
+			var character2 = new Character(stage);
+			var fishbone = new Fishbone(stage);
+
+			// touch event
+			var startX,startY, tarX, tarY, disX, disY,
+				rotation;
+
+			container.addEventListener('touchstart', function(event){
+				event.preventDefault();
+
+				var touch = event.touches[0];
+				startX = touch.pageX;
+				startY = touch.pageY;
+			})
+
+			container.addEventListener('touchmove', function(event){
+				event.preventDefault();
+
+				var touch = event.touches[0];
+				tarX = touch.pageX;
+				tarY = touch.pageY;
+
+				disX = startX - tarX;
+				disY = tarY - startY;
+				rotation = Math.atan2(disY, disX);
+			});
+
+			container.addEventListener('touchend', function(event){
+				event.preventDefault();
+				rotation = false;
+			})
+
+			var speed = 5;
+			var spaceTime = 500;
+			var force = 0.95;
+			var lastCrash = false;
+			var lastX;
+			var lastZ;
+			var lastRotation;
+			var rafId;
+
+			//stage.render();
+			function animate(){
+				rafId = requestAnimationFrame(animate);
+
+				stage.render();
+				stats.update();
+
+				if(character.completed && threeEnd){
+					detectorUpdate();
+					fishbone.animate();
+				}
+
+				if(rotation){
+					character.animate();
+					character.instance.rotation.y = rotation
+
+					if(Math.abs(character.instance.position.x) >= screenWidth / 2){
+						character.instance.position.x = (Math.abs(lastX) / lastX) * (Math.abs(lastX) - speed);
+					}else{
+						character.instance.position.x -= Math.cos(rotation) * speed;
+						lastX = character.instance.position.x;
+					}
+
+					if(Math.abs(character.instance.position.z) > screenHeight / 2){
+						character.instance.position.z = (Math.abs(lastZ) / lastZ) * (Math.abs(lastZ) - speed);
+					}else{
+						character.instance.position.z += Math.sin(rotation) * speed;
+						lastZ = character.instance.position.z;
+					}
+
+					lastRotation = rotation;
+
+					// 赋值已用来判断碰撞检测
+					character.mesh.position.x = character.instance.position.x;
+					character.mesh.position.z = character.instance.position.z;
+				}
+
+				//console.log(character.instance.position.x)
+
+				if(crash && !lastCrash){
+					fishbone.remove();
+					fishbone.instances.splice(0,1);
+
+					lastCrash = crash;
+					spaceTime = spaceTime * force;
+
+					setTimeout(function(){
+						fishbone.create();
+					}, spaceTime)
+				}
+
+				lastCrash && (lastCrash = false);
+
+				// 读秒结束
+				if(isEnd){
+					gameOverShow(true);
+					cancelAnimationFrame(rafId)
+				}
+			};
+
+			function detectorUpdate(){
+
+				var role = character.mesh;
+				var originPoint = role.position.clone();
+
+				for(var i = 0; i < role.geometry.vertices.length; i++){
+
+					var localVertex = role.geometry.vertices[i].clone();
+
+					// 顶点经过变换后的坐标
+       				var globalVertex = localVertex.applyMatrix4(role.matrix);
+        			var directionVector = globalVertex.sub(role.position);
+
+        			var ray = new THREE.Raycaster(originPoint, directionVector.clone().normalize());
+
+        			var collisionResults = ray.intersectObjects(fishbone.instances);
+        			if (collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()) {
+			            crash = true;
+			            crashId = collisionResults[0].object.name;
+			            break;
+			        }
+
+			        crash = false;
+				}
+			}
+
+			function gameStart(){
+				gameOverShow();
+
+				character.create();
+				character.instance.position.x =  -100;
+
+				startCountDown(function(){
+					countDown(0.1);
+
+					setTimeout(function(){
+						fishbone.create();
+					},1000)
+					
+				});
+			}
+
+			function gameRestart(){
+				threeEnd = false;
+				isEnd = false;
+				lastCrash = false;
+				speed = 5;
+				spaceTime = 500;
+				force = 0.95;
+				lastX = 0;
+				lastZ = 0;
+				lastRotation = 0;
+				rafId = 0;
+
+				character.remove();
+				fishbone.remove();
+				animate();
+				gameStart();
+			}
+
+			// action
+			animate();
+
+			gameStart();
+
+			document.getElementById("restart").addEventListener(
+				"touchstart", 
+				function(e){
+					e.preventDefault();
+					gameRestart();
+				}
+			)
+		}
+
+		
+		main();*/
+
+
+		/*var socket = io('http://localhost:3000');
+
+		socket.emit('join', { radius: 1 });
+
+	  	socket.on('join', function (data) {
+
+	  		 console.log(data)
+	    	
+	  	});*/
+
+		</script>
+	</body>
+</html>
